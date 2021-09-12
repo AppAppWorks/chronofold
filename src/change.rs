@@ -11,7 +11,7 @@ impl<T> Change<T> {
     /// Converts from `&Change<T>` to `Change<&T>`.
     pub fn as_ref(&self) -> Change<&T> {
         use Change::*;
-        match *self {
+        match self {
             Root => Root,
             Insert(ref x) => Insert(x),
             Delete => Delete,

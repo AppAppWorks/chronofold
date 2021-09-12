@@ -40,7 +40,6 @@ where
                 "unknown reference {}",
                 op.payload
                     .reference()
-                    .as_ref()
                     .expect("reference must not be `None`")
             ),
             FutureTimestamp(op) => write!(f, "future timestamp {}", op.id),
