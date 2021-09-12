@@ -18,14 +18,14 @@ impl<A: Author> Version<A> {
     /// Increments the version using a timestamp.
     pub fn inc(&mut self, timestamp: &Timestamp<A>) {
         self.log_indices
-            .entry(timestamp.1)
-            .and_modify(|t| *t = AuthorIndex(usize::max(t.0, (timestamp.0).0)))
-            .or_insert(timestamp.0);
+            .entry(timestamp.author)
+            .and_modify(|t| *t = AuthorIndex(usize::max(t.0, (timestamp.idx).0)))
+            .or_insert(timestamp.idx);
     }
 
     /// Returns an iterator over the timestamps in this version.
     pub fn iter(&self) -> impl Iterator<Item = Timestamp<A>> + '_ {
-        self.log_indices.iter().map(|(a, i)| Timestamp(*i, *a))
+        self.log_indices.iter().map(|(a, i)| Timestamp::new(*i, *a))
     }
 
     /// Returns the version's log index for `author`.
@@ -81,9 +81,9 @@ impl<A: Author, T> Chronofold<A, T> {
         // TODO: Don't iterate over all ops in cases where that is not
         // necessary.
         self.iter_ops(..)
-            .filter(move |op| match version.log_indices.get(&op.id.1) {
+            .filter(move |op| match version.log_indices.get(&op.id.author) {
                 None => true,
-                Some(idx) => op.id.0 > *idx,
+                Some(idx) => op.id.idx > *idx,
             })
     }
 }

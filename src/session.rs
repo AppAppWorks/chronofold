@@ -109,7 +109,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     pub fn create_root(&mut self) -> LocalIndex {
         let new_index = AuthorIndex(self.chronofold.log.len());
         self.chronofold
-            .apply_change(Timestamp(new_index, self.author), None, Change::Root)
+            .apply_change(Timestamp::new(new_index, self.author), None, Change::Root)
     }
 
     fn apply_change(&mut self, reference: LocalIndex, change: Change<T>) -> LocalIndex {
@@ -132,7 +132,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     {
         self.chronofold
             .iter_ops(self.first_index..)
-            .filter(move |op| op.id.1 == self.author)
+            .filter(move |op| op.id.author == self.author)
     }
 }
 

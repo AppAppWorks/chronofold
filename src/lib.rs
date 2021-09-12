@@ -154,7 +154,7 @@ impl<A: Author, T> Chronofold<A, T> {
     pub fn new(author: A) -> Self {
         let root_idx = LocalIndex(0);
         let mut version = Version::default();
-        version.inc(&Timestamp(AuthorIndex(0), author));
+        version.inc(&Timestamp::new(AuthorIndex(0), author));
         let mut next_indices = OffsetMap::default();
         next_indices.set(root_idx, None);
         let mut authors = RangeFromMap::default();
@@ -197,7 +197,7 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     pub fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LocalIndex> {
-        for i in (timestamp.0).0..self.log.len() {
+        for i in (timestamp.idx).0..self.log.len() {
             if self.timestamp(LocalIndex(i)).unwrap() == *timestamp {
                 return Some(LocalIndex(i));
             }
@@ -209,7 +209,7 @@ impl<A: Author, T> Chronofold<A, T> {
         if let (Some(shift), Some(author)) =
             (self.index_shifts.get(&index), self.authors.get(&index))
         {
-            Some(Timestamp(&index - shift, *author))
+            Some(Timestamp::new(&index - shift, *author))
         } else {
             None
         }
@@ -230,7 +230,7 @@ impl<A: Author, T> Chronofold<A, T> {
         // We rely on indices in timestamps being greater or equal than their
         // indices in every local log. This means we cannot apply an op not
         // matching this constraint, even if we know the reference.
-        if op.id.0 .0 > self.log.len() {
+        if op.id.idx.0 > self.log.len() {
             return Err(ChronofoldError::FutureTimestamp(op));
         }
 

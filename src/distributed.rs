@@ -27,11 +27,20 @@ impl<T> Author for T where
 /// or was concurrent.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Timestamp<A>(pub AuthorIndex, pub A);
+pub struct Timestamp<A> {
+    pub idx: AuthorIndex,
+    pub author: A,
+}
+
+impl<A> Timestamp<A> {
+    pub fn new(idx: AuthorIndex, author: A) -> Self {
+        Self { idx, author }
+    }
+}
 
 impl<A: fmt::Display> fmt::Display for Timestamp<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<{}, {}>", self.0, self.1)
+        write!(f, "<{}, {}>", self.idx, self.author)
     }
 }
 

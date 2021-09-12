@@ -69,9 +69,9 @@ impl<A: Author, T> Chronofold<A, T> {
         // Append to the chronofold's log and secondary logs.
         self.log.push(change);
         self.next_indices.set(new_index, next_index);
-        self.authors.set(new_index, id.1);
+        self.authors.set(new_index, id.author);
         self.index_shifts
-            .set(new_index, IndexShift(new_index.0 - (id.0).0));
+            .set(new_index, IndexShift(new_index.0 - (id.idx).0));
         self.references.set(new_index, reference);
 
         // Increment version.
@@ -106,7 +106,7 @@ impl<A: Author, T> Chronofold<A, T> {
         let mut changes = changes.into_iter();
         if let Some(first_change) = changes.next() {
             let new_index = LocalIndex(self.log.len());
-            let id = Timestamp(AuthorIndex(new_index.0), author);
+            let id = Timestamp::new(AuthorIndex(new_index.0), author);
             last_id = Some(id);
 
             // Set the predecessors next index to our new change's index while
@@ -124,7 +124,7 @@ impl<A: Author, T> Chronofold<A, T> {
 
         for change in changes {
             let new_index = RelativeNextIndex::default().add(&predecessor);
-            let id = Timestamp(AuthorIndex(new_index.0), author);
+            let id = Timestamp::new(AuthorIndex(new_index.0), author);
             last_id = Some(id);
 
             // Append to the chronofold's log and secondary logs.
@@ -134,9 +134,9 @@ impl<A: Author, T> Chronofold<A, T> {
         }
 
         if let (Some(id), Some(next_index)) = (last_id, last_next_index) {
-            self.next_indices.set(LocalIndex(id.0.0), next_index);
+            self.next_indices.set(LocalIndex(id.idx.0), next_index);
             self.version.inc(&id);
-            Some(id.0)
+            Some(id.idx)
         } else {
             None
         }
