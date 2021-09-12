@@ -1,4 +1,4 @@
-use chronofold::{Chronofold, LogIndex, Op, Session};
+use chronofold::{Chronofold, LocalIndex, Op, Session};
 
 #[test]
 fn concurrent_insertions() {
@@ -22,10 +22,10 @@ fn concurrent_deletions() {
         "fobar",
         "foobar",
         |s| {
-            s.remove(LogIndex(2));
+            s.remove(LocalIndex(2));
         },
         |s| {
-            s.remove(LogIndex(2));
+            s.remove(LocalIndex(2));
         },
     );
 }
@@ -37,10 +37,10 @@ fn concurrent_replacements() {
         "foobaz123",
         "foobar",
         |s| {
-            s.splice(LogIndex(4).., "123".chars());
+            s.splice(LocalIndex(4).., "123".chars());
         },
         |s| {
-            s.splice(LogIndex(4).., "baz".chars());
+            s.splice(LocalIndex(4).., "baz".chars());
         },
     );
 }
@@ -54,10 +54,10 @@ fn concurrent_insertion_deletion() {
         "0!",
         "01",
         |s| {
-            s.insert_after(LogIndex(2), '!');
+            s.insert_after(LocalIndex(2), '!');
         },
         |s| {
-            s.remove(LogIndex(2));
+            s.remove(LocalIndex(2));
         },
     );
 
@@ -67,10 +67,10 @@ fn concurrent_insertion_deletion() {
         "01",
         |s| {
             s.extend("23".chars());
-            s.insert_after(LogIndex(2), '!');
+            s.insert_after(LocalIndex(2), '!');
         },
         |s| {
-            s.remove(LogIndex(2));
+            s.remove(LocalIndex(2));
         },
     );
 
@@ -79,11 +79,11 @@ fn concurrent_insertion_deletion() {
         "023!",
         "01",
         |s| {
-            s.insert_after(LogIndex(2), '!');
+            s.insert_after(LocalIndex(2), '!');
         },
         |s| {
             s.extend("23".chars());
-            s.remove(LogIndex(2));
+            s.remove(LocalIndex(2));
         },
     );
 }

@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::{Chronofold, LogIndex};
+use crate::{AuthorIndex, Chronofold};
 
 /// A trait alias to reduce redundancy in type declarations.
 pub trait Author:
@@ -27,7 +27,7 @@ impl<T> Author for T where
 /// or was concurrent.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Timestamp<A>(pub LogIndex, pub A);
+pub struct Timestamp<A>(pub AuthorIndex, pub A);
 
 impl<A: fmt::Display> fmt::Display for Timestamp<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

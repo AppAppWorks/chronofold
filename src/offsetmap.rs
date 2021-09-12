@@ -60,37 +60,37 @@ impl<K: Ord, O> Default for OffsetMap<K, O> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{index::RelativeNextIndex, LogIndex};
+    use crate::{index::RelativeNextIndex, LocalIndex};
 
-    type IdxMap = OffsetMap<LogIndex, RelativeNextIndex>;
+    type IdxMap = OffsetMap<LocalIndex, RelativeNextIndex>;
 
     #[test]
     fn get_default() {
         let map = IdxMap::new();
-        assert_eq!(Some(LogIndex(1)), map.get(&LogIndex(0)));
+        assert_eq!(Some(LocalIndex(1)), map.get(&LocalIndex(0)));
     }
 
     #[test]
     fn set_default() {
         let mut map = IdxMap::new();
-        map.set(LogIndex(1), Some(LogIndex(2)));
-        assert_eq!(Some(LogIndex(2)), map.get(&LogIndex(1)));
+        map.set(LocalIndex(1), Some(LocalIndex(2)));
+        assert_eq!(Some(LocalIndex(2)), map.get(&LocalIndex(1)));
         assert_eq!(IdxMap::new(), map); // the default is not stored
     }
 
     #[test]
     fn set_and_get_none() {
         let mut map = IdxMap::new();
-        map.set(LogIndex(42), None);
-        assert_eq!(None, map.get(&LogIndex(42)));
+        map.set(LocalIndex(42), None);
+        assert_eq!(None, map.get(&LocalIndex(42)));
     }
 
     #[test]
     fn set_and_get_value() {
         let mut map = IdxMap::new();
-        map.set(LogIndex(42), Some(LogIndex(50)));
-        map.set(LogIndex(50), Some(LogIndex(1)));
-        assert_eq!(Some(LogIndex(50)), map.get(&LogIndex(42)));
-        assert_eq!(Some(LogIndex(1)), map.get(&LogIndex(50)));
+        map.set(LocalIndex(42), Some(LocalIndex(50)));
+        map.set(LocalIndex(50), Some(LocalIndex(1)));
+        assert_eq!(Some(LocalIndex(50)), map.get(&LocalIndex(42)));
+        assert_eq!(Some(LocalIndex(1)), map.get(&LocalIndex(50)));
     }
 }

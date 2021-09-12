@@ -1,10 +1,10 @@
-use chronofold::{Chronofold, ChronofoldError, LogIndex, Op, Timestamp};
+use chronofold::{Chronofold, ChronofoldError, LocalIndex, Op, Timestamp, AuthorIndex};
 
 #[test]
 fn unknown_timestamp() {
     let mut cfold = Chronofold::<u8, char>::default();
-    let unknown = Timestamp(LogIndex(1), 42);
-    let op = Op::insert(Timestamp(LogIndex(1), 1), Some(unknown), '!');
+    let unknown = Timestamp::new(AuthorIndex(1), 42);
+    let op = Op::insert(Timestamp::new(AuthorIndex(1), 1), Some(unknown), '!');
     let err = cfold.apply(op.clone()).unwrap_err();
     assert_eq!(ChronofoldError::UnknownReference(op), err);
     assert_eq!("unknown reference <1, 42>", format!("{}", err));
@@ -14,8 +14,8 @@ fn unknown_timestamp() {
 fn future_timestamp() {
     let mut cfold = Chronofold::<u8, char>::default();
     let op = Op::insert(
-        Timestamp(LogIndex(9), 1),
-        Some(Timestamp(LogIndex(0), 0)),
+        Timestamp::new(AuthorIndex(9), 1),
+        Some(Timestamp::new(AuthorIndex(0), 0)),
         '.',
     );
     let err = cfold.apply(op.clone()).unwrap_err();
@@ -29,8 +29,8 @@ fn existing_timestamp() {
     // `ChronofoldError::ExistingTimestamp`:
     let mut cfold = Chronofold::<u8, char>::default();
     let op = Op::insert(
-        Timestamp(LogIndex(1), 1),
-        Some(Timestamp(LogIndex(0), 0)),
+        Timestamp::new(AuthorIndex(1), 1),
+        Some(Timestamp::new(AuthorIndex(0), 0)),
         '.',
     );
     assert_eq!(Ok(()), cfold.apply(op.clone()));

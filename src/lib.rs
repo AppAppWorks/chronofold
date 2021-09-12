@@ -21,7 +21,7 @@
 //! # Example usage
 //!
 //! ```rust
-//! use chronofold::{Chronofold, LogIndex, Op};
+//! use chronofold::{Chronofold, LocalIndex, Op};
 //!
 //! type AuthorId = &'static str;
 //!
@@ -35,7 +35,7 @@
 //! let ops_a: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_a.session("alice");
 //!     session.splice(
-//!         LogIndex(16)..LogIndex(16),
+//!         LocalIndex(16)..LocalIndex(16),
 //!         " - a data structure for versioned text".chars(),
 //!     );
 //!     session.iter_ops().map(Op::cloned).collect()
@@ -44,7 +44,7 @@
 //! // ... while Bob fixes a typo.
 //! let ops_b: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_b.session("bob");
-//!     session.insert_after(LogIndex(11), 'o');
+//!     session.insert_after(LocalIndex(11), 'o');
 //!     session.iter_ops().map(Op::cloned).collect()
 //! };
 //!
@@ -133,7 +133,7 @@ extern crate serde;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Chronofold<A, T> {
     log: Vec<Change<T>>,
-    root: LogIndex,
+    root: LocalIndex,
     #[cfg_attr(
         feature = "serde",
         serde(bound(
@@ -143,18 +143,18 @@ pub struct Chronofold<A, T> {
     )]
     version: Version<A>,
 
-    next_indices: OffsetMap<LogIndex, RelativeNextIndex>,
-    references: OffsetMap<LogIndex, RelativeReference>,
-    authors: RangeFromMap<LogIndex, A>,
-    index_shifts: RangeFromMap<LogIndex, IndexShift>,
+    next_indices: OffsetMap<LocalIndex, RelativeNextIndex>,
+    references: OffsetMap<LocalIndex, RelativeReference>,
+    authors: RangeFromMap<LocalIndex, A>,
+    index_shifts: RangeFromMap<LocalIndex, IndexShift>,
 }
 
 impl<A: Author, T> Chronofold<A, T> {
     /// Constructs a new, empty chronofold.
     pub fn new(author: A) -> Self {
-        let root_idx = LogIndex(0);
+        let root_idx = LocalIndex(0);
         let mut version = Version::default();
-        version.inc(&Timestamp(root_idx, author));
+        version.inc(&Timestamp(AuthorIndex(0), author));
         let mut next_indices = OffsetMap::default();
         next_indices.set(root_idx, None);
         let mut authors = RangeFromMap::default();
@@ -165,7 +165,7 @@ impl<A: Author, T> Chronofold<A, T> {
         references.set(root_idx, None);
         Self {
             log: vec![Change::Root],
-            root: LogIndex(0),
+            root: LocalIndex(0),
             version,
             next_indices,
             authors,
@@ -187,7 +187,7 @@ impl<A: Author, T> Chronofold<A, T> {
     /// Returns a reference to a change in the chronofold's log.
     ///
     /// If `index` is out of bounds, `None` is returned.
-    pub fn get(&self, index: LogIndex) -> Option<&Change<T>> {
+    pub fn get(&self, index: LocalIndex) -> Option<&Change<T>> {
         self.log.get(index.0)
     }
 
@@ -196,16 +196,16 @@ impl<A: Author, T> Chronofold<A, T> {
         Session::new(author, self)
     }
 
-    pub fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LogIndex> {
+    pub fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LocalIndex> {
         for i in (timestamp.0).0..self.log.len() {
-            if self.timestamp(LogIndex(i)).unwrap() == *timestamp {
-                return Some(LogIndex(i));
+            if self.timestamp(LocalIndex(i)).unwrap() == *timestamp {
+                return Some(LocalIndex(i));
             }
         }
         None
     }
 
-    pub fn timestamp(&self, index: LogIndex) -> Option<Timestamp<A>> {
+    pub fn timestamp(&self, index: LocalIndex) -> Option<Timestamp<A>> {
         if let (Some(shift), Some(author)) =
             (self.index_shifts.get(&index), self.authors.get(&index))
         {

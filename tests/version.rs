@@ -1,4 +1,4 @@
-use chronofold::{Chronofold, LogIndex, Op, Timestamp, Version};
+use chronofold::{Chronofold, LocalIndex, Op, Timestamp, Version, AuthorIndex};
 
 #[test]
 fn partial_order() {
@@ -32,7 +32,7 @@ fn iter_newer_ops() {
     );
 
     let mut v2 = Version::new();
-    v2.inc(&Timestamp(LogIndex(1), 3));
+    v2.inc(&Timestamp::new(AuthorIndex(1), 3));
     assert_eq!(
         vec![
             Op::root(t(0, 0)),
@@ -47,7 +47,7 @@ fn iter_newer_ops() {
 }
 
 fn t(log_index: usize, author: u8) -> Timestamp<u8> {
-    Timestamp(LogIndex(log_index), author)
+    Timestamp::new(AuthorIndex(log_index), author)
 }
 
 fn v(timestamps: Vec<Timestamp<u8>>) -> Version<u8> {

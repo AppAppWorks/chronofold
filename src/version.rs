@@ -1,12 +1,12 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use crate::{Author, Chronofold, FromLocalValue, LogIndex, Op, Timestamp};
+use crate::{Author, Chronofold, FromLocalValue, LocalIndex, Op, Timestamp, AuthorIndex, LogIndex};
 
 /// A vector clock representing the chronofold's version.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Version<A> {
-    log_indices: BTreeMap<A, LogIndex>,
+    log_indices: BTreeMap<A, AuthorIndex>,
 }
 
 impl<A: Author> Version<A> {
@@ -19,7 +19,7 @@ impl<A: Author> Version<A> {
     pub fn inc(&mut self, timestamp: &Timestamp<A>) {
         self.log_indices
             .entry(timestamp.1)
-            .and_modify(|t| *t = LogIndex(usize::max(t.0, (timestamp.0).0)))
+            .and_modify(|t| *t = AuthorIndex(usize::max(t.0, (timestamp.0).0)))
             .or_insert(timestamp.0);
     }
 
@@ -29,7 +29,7 @@ impl<A: Author> Version<A> {
     }
 
     /// Returns the version's log index for `author`.
-    pub fn get(&self, author: &A) -> Option<LogIndex> {
+    pub fn get(&self, author: &A) -> Option<AuthorIndex> {
         self.log_indices.get(author).cloned()
     }
 }

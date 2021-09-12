@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::matches;
 use std::ops::{Bound, Range, RangeBounds};
 
-use crate::{Author, Change, Chronofold, FromLocalValue, LogIndex, Op, OpPayload};
+use crate::{Author, Change, Chronofold, FromLocalValue, LocalIndex, Op, OpPayload};
 
 impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over the log indices in causal order.
@@ -12,7 +12,7 @@ impl<A: Author, T> Chronofold<A, T> {
     /// API before giving it more thought.
     pub(crate) fn iter_log_indices_causal_range<R>(&self, range: R) -> CausalIter<'_, A, T>
     where
-        R: RangeBounds<LogIndex>,
+        R: RangeBounds<LocalIndex>,
     {
         let mut current = match range.start_bound() {
             Bound::Unbounded => self.index_after(self.root),
@@ -37,7 +37,7 @@ impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over a subtree.
     ///
     /// The first item is always `root`.
-    pub(crate) fn iter_subtree(&self, root: LogIndex) -> impl Iterator<Item = LogIndex> + '_ {
+    pub(crate) fn iter_subtree(&self, root: LocalIndex) -> impl Iterator<Item = LocalIndex> + '_ {
         let mut subtree: HashSet<LogIndex> = HashSet::new();
         self.iter_log_indices_causal_range(root..)
             .filter_map(move |(_, idx)| {
@@ -58,7 +58,7 @@ impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over elements and their log indices in causal order.
     pub fn iter_range<R>(&self, range: R) -> Iter<A, T>
     where
-        R: RangeBounds<LogIndex>,
+        R: RangeBounds<LocalIndex>,
     {
         let mut causal_iter = self.iter_log_indices_causal_range(range);
         let current = causal_iter.next();
@@ -81,12 +81,12 @@ impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over ops in log order.
     pub fn iter_ops<'a, R, V>(&'a self, range: R) -> Ops<'a, A, T, V>
     where
-        R: RangeBounds<LogIndex> + 'a,
+        R: RangeBounds<LocalIndex> + 'a,
         V: FromLocalValue<'a, A, T>,
     {
-        let oob = LogIndex(self.log.len());
+        let oob = LocalIndex(self.log.len());
         let start = match range.start_bound() {
-            Bound::Unbounded => LogIndex(0),
+            Bound::Unbounded => LocalIndex(0),
             Bound::Included(idx) => *idx,
             Bound::Excluded(idx) => self.index_after(*idx).unwrap_or(oob),
         }
@@ -107,12 +107,12 @@ impl<A: Author, T> Chronofold<A, T> {
 
 pub(crate) struct CausalIter<'a, A, T> {
     cfold: &'a Chronofold<A, T>,
-    current: Option<LogIndex>,
-    first_excluded: Option<LogIndex>,
+    current: Option<LocalIndex>,
+    first_excluded: Option<LocalIndex>,
 }
 
 impl<'a, A: Author, T> Iterator for CausalIter<'a, A, T> {
-    type Item = (&'a Change<T>, LogIndex);
+    type Item = (&'a Change<T>, LocalIndex);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.current.take() {
@@ -131,11 +131,11 @@ impl<'a, A: Author, T> Iterator for CausalIter<'a, A, T> {
 /// `Chronofold`. See its documentation for more.
 pub struct Iter<'a, A, T> {
     causal_iter: CausalIter<'a, A, T>,
-    current: Option<(&'a Change<T>, LogIndex)>,
+    current: Option<(&'a Change<T>, LocalIndex)>,
 }
 
 impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
-    type Item = (&'a T, LogIndex);
+    type Item = (&'a T, LocalIndex);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -179,7 +179,7 @@ where
     type Item = Op<A, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let idx = LogIndex(self.idx_iter.next()?);
+        let idx = LocalIndex(self.idx_iter.next()?);
         let id = self
             .cfold
             .timestamp(idx)
@@ -223,17 +223,18 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::{AuthorIndex, Timestamp};
+
     use super::*;
-    use crate::Timestamp;
 
     #[test]
     fn iter_subtree() {
         let mut cfold = Chronofold::<u8, char>::default();
         cfold.session(1).extend("013".chars());
-        cfold.session(1).insert_after(LogIndex(2), '2');
+        cfold.session(1).insert_after(LocalIndex(2), '2');
         assert_eq!(
-            vec![LogIndex(2), LogIndex(4), LogIndex(3)],
-            cfold.iter_subtree(LogIndex(2)).collect::<Vec<_>>()
+            vec![LocalIndex(2), LocalIndex(4), LocalIndex(3)],
+            cfold.iter_casual_tree(LocalIndex(2)).collect::<Vec<_>>()
         );
     }
 
@@ -241,29 +242,29 @@ mod tests {
     fn iter_ops() {
         let mut cfold = Chronofold::<u8, char>::default();
         cfold.session(1).extend("Hi!".chars());
-        let op0 = Op::root(Timestamp(LogIndex(0), 0));
+        let op0 = Op::root(Timestamp::new(AuthorIndex(0), 0));
         let op1 = Op::insert(
-            Timestamp(LogIndex(1), 1),
-            Some(Timestamp(LogIndex(0), 0)),
+            Timestamp::new(AuthorIndex(1), 1),
+            Some(Timestamp::new(AuthorIndex(0), 0)),
             &'H',
         );
         let op2 = Op::insert(
-            Timestamp(LogIndex(2), 1),
-            Some(Timestamp(LogIndex(1), 1)),
+            Timestamp::new(AuthorIndex(2), 1),
+            Some(Timestamp::new(AuthorIndex(1), 1)),
             &'i',
         );
         let op3 = Op::insert(
-            Timestamp(LogIndex(3), 1),
-            Some(Timestamp(LogIndex(2), 1)),
+            Timestamp::new(AuthorIndex(3), 1),
+            Some(Timestamp::new(AuthorIndex(2), 1)),
             &'!',
         );
         assert_eq!(
             vec![op0.clone(), op1.clone(), op2.clone()],
-            cfold.iter_ops(..LogIndex(3)).collect::<Vec<_>>()
+            cfold.iter_ops(..LocalIndex(3)).collect::<Vec<_>>()
         );
         assert_eq!(
             vec![op2, op3],
-            cfold.iter_ops(LogIndex(2)..).collect::<Vec<_>>()
+            cfold.iter_ops(LocalIndex(2)..).collect::<Vec<_>>()
         );
     }
 

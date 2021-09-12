@@ -22,7 +22,7 @@
 //!
 //! [`dmonad/crdt-benchmarks`]: https://github.com/dmonad/crdt-benchmarks
 
-use chronofold::{Chronofold, LogIndex, Session};
+use chronofold::{Chronofold, LocalIndex, Session};
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::{rngs::ThreadRng, seq::IteratorRandom, Rng};
 use std::ops::RangeInclusive;
@@ -93,7 +93,7 @@ fn insert_chars_at_random_positions(c: &mut Criterion) {
         positions_and_chars,
         |sess, (pos, c)| {
             let idx = if pos == 0 {
-                LogIndex(0) // insert as first element
+                LocalIndex(0) // insert as first element
             } else {
                 // This is expected to be really slow, as accessing a specific
                 // position (as opposed to a log index) requires walking the
@@ -145,7 +145,7 @@ fn insert_and_delete_string(c: &mut Criterion) {
         vec![s],
         |sess, s| {
             let last_idx = sess.extend(s.chars()).unwrap();
-            sess.splice(LogIndex(0)..=last_idx, "".chars());
+            sess.splice(LocalIndex(0)..=last_idx, "".chars());
         },
         assert_docs_equal(""),
     );

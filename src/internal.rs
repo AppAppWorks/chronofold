@@ -1,20 +1,20 @@
 use crate::index::{IndexShift, RelativeNextIndex};
 use crate::offsetmap::Offset;
-use crate::{Author, Change, Chronofold, LogIndex, Timestamp};
+use crate::{Author, Change, Chronofold, LocalIndex, Timestamp, AuthorIndex};
 
 use std::matches;
 
 impl<A: Author, T> Chronofold<A, T> {
-    pub(crate) fn next_log_index(&self) -> LogIndex {
-        LogIndex(self.log.len())
+    pub(crate) fn next_log_index(&self) -> LocalIndex {
+        LocalIndex(self.log.len())
     }
 
     pub(crate) fn find_predecessor(
         &self,
         id: Timestamp<A>,
-        reference: Option<LogIndex>,
+        reference: Option<LocalIndex>,
         change: &Change<T>,
-    ) -> Option<LogIndex> {
+    ) -> Option<LocalIndex> {
         match (reference, change) {
             (_, Change::Delete) => reference, // deletes have priority
             (None, Change::Root) => reference,
@@ -48,15 +48,15 @@ impl<A: Author, T> Chronofold<A, T> {
     pub(crate) fn apply_change(
         &mut self,
         id: Timestamp<A>,
-        reference: Option<LogIndex>,
+        reference: Option<LocalIndex>,
         change: Change<T>,
-    ) -> LogIndex {
+    ) -> LocalIndex {
         // Find the predecessor to `op`.
         let predecessor = self.find_predecessor(id, reference, &change);
 
         // Set the predecessors next index to our new change's index while
         // keeping it's previous next index for ourselves.
-        let new_index = LogIndex(self.log.len());
+        let new_index = LocalIndex(self.log.len());
         let next_index;
         if let Some(idx) = predecessor {
             next_index = self.next_indices.get(&idx);
@@ -89,9 +89,9 @@ impl<A: Author, T> Chronofold<A, T> {
     pub(crate) fn apply_local_changes<I>(
         &mut self,
         author: A,
-        reference: LogIndex,
+        reference: LocalIndex,
         changes: I,
-    ) -> Option<LogIndex>
+    ) -> Option<LocalIndex>
     where
         I: IntoIterator<Item = Change<T>>,
     {
@@ -105,8 +105,8 @@ impl<A: Author, T> Chronofold<A, T> {
 
         let mut changes = changes.into_iter();
         if let Some(first_change) = changes.next() {
-            let new_index = LogIndex(self.log.len());
-            let id = Timestamp(new_index, author);
+            let new_index = LocalIndex(self.log.len());
+            let id = Timestamp(AuthorIndex(new_index.0), author);
             last_id = Some(id);
 
             // Set the predecessors next index to our new change's index while
@@ -124,7 +124,7 @@ impl<A: Author, T> Chronofold<A, T> {
 
         for change in changes {
             let new_index = RelativeNextIndex::default().add(&predecessor);
-            let id = Timestamp(new_index, author);
+            let id = Timestamp(AuthorIndex(new_index.0), author);
             last_id = Some(id);
 
             // Append to the chronofold's log and secondary logs.
@@ -134,7 +134,7 @@ impl<A: Author, T> Chronofold<A, T> {
         }
 
         if let (Some(id), Some(next_index)) = (last_id, last_next_index) {
-            self.next_indices.set(id.0, next_index);
+            self.next_indices.set(LocalIndex(id.0.0), next_index);
             self.version.inc(&id);
             Some(id.0)
         } else {
@@ -142,7 +142,7 @@ impl<A: Author, T> Chronofold<A, T> {
         }
     }
 
-    pub(crate) fn find_last_delete(&self, reference: LogIndex) -> Option<LogIndex> {
+    pub(crate) fn find_last_delete(&self, reference: LocalIndex) -> Option<LocalIndex> {
         self.iter_log_indices_causal_range(reference..)
             .skip(1)
             .filter(|(c, idx)| {

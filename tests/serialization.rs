@@ -1,5 +1,5 @@
 #![cfg(feature = "serde")]
-use chronofold::{Chronofold, LogIndex};
+use chronofold::{Chronofold, LocalIndex};
 
 #[test]
 fn roundtrip() {
@@ -22,7 +22,7 @@ fn local_edits_only() {
     cfold.session(1).extend("Hello world!".chars());
     cfold
         .session(1)
-        .splice(LogIndex(6)..LogIndex(11), "cfold".chars());
+        .splice(LocalIndex(6)..LocalIndex(11), "cfold".chars());
     assert_json_max_len(&cfold, 616);
 }
 

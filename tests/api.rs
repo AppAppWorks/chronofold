@@ -3,7 +3,7 @@
 //! The main purpose of these tests is not to cover all corner cases, but
 //! rather to show that they behave like there counterparts on `Vec`.
 
-use chronofold::{Change, Chronofold, LogIndex, Session};
+use chronofold::{Change, Chronofold, LocalIndex, Session};
 
 #[test]
 fn is_empty() {
@@ -32,7 +32,7 @@ fn get() {
     let mut cfold = Chronofold::<u8, char>::default();
     cfold.session(1).extend("abc".chars());
     assert_eq!(Some(&'b'), vec.get(1));
-    assert_eq!(Some(&Change::Insert('b')), cfold.get(LogIndex(2)));
+    assert_eq!(Some(&Change::Insert('b')), cfold.get(LocalIndex(2)));
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn insert_after() {
             vec.insert(2, 'o');
         },
         |cfold_session| {
-            cfold_session.insert_after(LogIndex(2), 'o');
+            cfold_session.insert_after(LocalIndex(2), 'o');
         },
     );
 }
@@ -106,7 +106,7 @@ fn splice() {
             vec.splice(3..3, "bar".chars());
         },
         |cfold_session| {
-            cfold_session.splice(LogIndex(4)..LogIndex(4), "bar".chars());
+            cfold_session.splice(LocalIndex(4)..LocalIndex(4), "bar".chars());
         },
     );
 
@@ -117,7 +117,7 @@ fn splice() {
             vec.splice(0..0, "foo".chars());
         },
         |cfold_session| {
-            cfold_session.splice(LogIndex(0)..LogIndex(0), "foo".chars());
+            cfold_session.splice(LocalIndex(0)..LocalIndex(0), "foo".chars());
         },
     );
 
@@ -130,7 +130,7 @@ fn splice() {
             vec.splice(3..3, "bar".chars());
         },
         |cfold_session| {
-            cfold_session.splice(LogIndex(4)..LogIndex(4), "bar".chars());
+            cfold_session.splice(LocalIndex(4)..LocalIndex(4), "bar".chars());
         },
     );
 }
