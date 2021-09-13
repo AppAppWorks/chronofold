@@ -184,7 +184,7 @@ where
             .cfold
             .timestamp(idx)
             .expect("timestamps of already applied ops have to exist");
-        let reference = self.cfold.references.get(&idx).map(|r| {
+        let reference = self.cfold.get_reference(&idx).map(|r| {
             self.cfold
                 .timestamp(r)
                 .expect("references of already applied ops have to exist")

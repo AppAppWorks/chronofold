@@ -88,7 +88,7 @@ impl<A: Author, T> Chronofold<A, T> {
     ///   1. `index` is the last index (causal order).
     ///   2. `index` is out of bounds.
     pub(crate) fn index_after(&self, index: LocalIndex) -> Option<LocalIndex> {
-        self.next_indices.get(&index)
+        self.get_next_index(&index)
     }
 }
 

@@ -82,8 +82,10 @@ mod offsetmap;
 mod rangemap;
 mod session;
 mod version;
+mod costructures;
 
 pub use crate::change::*;
+use crate::costructures::Costructures;
 pub use crate::distributed::*;
 pub use crate::error::*;
 pub use crate::fmt::*;
@@ -143,10 +145,7 @@ pub struct Chronofold<A, T> {
     )]
     version: Version<A>,
 
-    next_indices: OffsetMap<LocalIndex, RelativeNextIndex>,
-    references: OffsetMap<LocalIndex, RelativeReference>,
-    authors: RangeFromMap<LocalIndex, A>,
-    index_shifts: RangeFromMap<LocalIndex, IndexShift>,
+    costructures: Costructures<A>,
 }
 
 impl<A: Author, T> Chronofold<A, T> {
@@ -155,23 +154,49 @@ impl<A: Author, T> Chronofold<A, T> {
         let root_idx = LocalIndex(0);
         let mut version = Version::default();
         version.inc(&Timestamp::new(AuthorIndex(0), author));
-        let mut next_indices = OffsetMap::default();
-        next_indices.set(root_idx, None);
-        let mut authors = RangeFromMap::default();
-        authors.set(root_idx, author);
-        let mut index_shifts = RangeFromMap::default();
-        index_shifts.set(root_idx, IndexShift(0));
-        let mut references = OffsetMap::default();
-        references.set(root_idx, None);
+        let mut costructures = Costructures::new();
+        costructures.set_next_index(root_idx, None);
+        costructures.set_author(root_idx, author);
+        costructures.set_index_shift(root_idx, IndexShift(0));
+        costructures.set_reference(root_idx, None);
         Self {
             log: vec![Change::Root],
             root: LocalIndex(0),
             version,
-            next_indices,
-            authors,
-            index_shifts,
-            references,
+            costructures,
         }
+    }
+
+    fn get_next_index(&self, index: &LocalIndex) -> Option<LocalIndex> {
+        self.costructures.get_next_index(index)
+    }
+
+    fn get_author(&self, index: &LocalIndex) -> Option<A> {
+        self.costructures.get_author(index)
+    }
+
+    fn get_index_shift(&self, index: &LocalIndex) -> Option<IndexShift> {
+        self.costructures.get_index_shift(index)
+    }
+
+    fn get_reference(&self, index: &LocalIndex) -> Option<LocalIndex> {
+        self.costructures.get_reference(index)
+    }
+
+    fn set_next_index(&mut self, index: LocalIndex, value: Option<LocalIndex>) {
+        self.costructures.set_next_index(index, value);
+    }
+
+    fn set_author(&mut self, index: LocalIndex, value: A) {
+        self.costructures.set_author(index, value);
+    }
+
+    fn set_index_shift(&mut self, index: LocalIndex, value: IndexShift) {
+        self.costructures.set_index_shift(index, value);
+    }
+
+    fn set_reference(&mut self, index: LocalIndex, value: Option<LocalIndex>) {
+        self.costructures.set_reference(index, value);
     }
 
     /// Returns `true` if the chronofold contains no elements.
@@ -207,9 +232,9 @@ impl<A: Author, T> Chronofold<A, T> {
 
     pub fn timestamp(&self, index: LocalIndex) -> Option<Timestamp<A>> {
         if let (Some(shift), Some(author)) =
-            (self.index_shifts.get(&index), self.authors.get(&index))
+            (self.get_index_shift(&index), self.get_author(&index))
         {
-            Some(Timestamp::new(&index - shift, *author))
+            Some(Timestamp::new(&index - &shift, *author))
         } else {
             None
         }

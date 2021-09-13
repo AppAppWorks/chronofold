@@ -26,7 +26,7 @@ impl<A: Author, T> Chronofold<A, T> {
             (Some(reference), _change) => {
                 if let Some((_, idx)) = self
                     .iter_log_indices_causal_range(reference..)
-                    .filter(|(_, i)| self.references.get(i) == Some(reference))
+                    .filter(|(_, i)| self.get_reference(i) == Some(reference))
                     .filter(|(c, i)| {
                         matches!(c, Change::Delete) || self.timestamp(*i).unwrap() > id
                     })
@@ -59,8 +59,8 @@ impl<A: Author, T> Chronofold<A, T> {
         let new_index = LocalIndex(self.log.len());
         let next_index;
         if let Some(idx) = predecessor {
-            next_index = self.next_indices.get(&idx);
-            self.next_indices.set(idx, Some(new_index));
+            next_index = self.get_next_index(&idx);
+            self.set_next_index(idx, Some(new_index));
         } else {
             // Inserting another root will result in two disjunct subsequences.
             next_index = None;
@@ -68,11 +68,10 @@ impl<A: Author, T> Chronofold<A, T> {
 
         // Append to the chronofold's log and secondary logs.
         self.log.push(change);
-        self.next_indices.set(new_index, next_index);
-        self.authors.set(new_index, id.author);
-        self.index_shifts
-            .set(new_index, IndexShift(new_index.0 - (id.idx).0));
-        self.references.set(new_index, reference);
+        self.set_next_index(new_index, next_index);
+        self.set_author(new_index, id.author);
+        self.set_index_shift(new_index, IndexShift(new_index.0 - (id.idx).0));
+        self.set_reference(new_index, reference);
 
         // Increment version.
         self.version.inc(&id);
@@ -111,13 +110,13 @@ impl<A: Author, T> Chronofold<A, T> {
 
             // Set the predecessors next index to our new change's index while
             // keeping it's previous next index for ourselves.
-            last_next_index = Some(self.next_indices.get(&predecessor));
-            self.next_indices.set(predecessor, Some(new_index));
+            last_next_index = self.get_next_index(&predecessor);
+            self.set_next_index(predecessor, Some(new_index));
 
             self.log.push(first_change);
-            self.authors.set(new_index, author);
-            self.index_shifts.set(new_index, IndexShift(0));
-            self.references.set(new_index, Some(predecessor));
+            self.set_author(new_index, author);
+            self.set_index_shift(new_index, IndexShift(0));
+            self.set_reference(new_index, Some(predecessor));
 
             predecessor = new_index;
         }
@@ -132,21 +131,18 @@ impl<A: Author, T> Chronofold<A, T> {
 
             predecessor = new_index;
         }
-
-        if let (Some(id), Some(next_index)) = (last_id, last_next_index) {
-            self.next_indices.set(LocalIndex(id.idx.0), next_index);
-            self.version.inc(&id);
-            Some(id.idx)
-        } else {
-            None
-        }
+        
+        let id = last_id?;
+        self.set_next_index(LocalIndex(id.idx.0), last_next_index);
+        self.version.inc(&id);
+        Some(LocalIndex(id.idx.0))
     }
 
     pub(crate) fn find_last_delete(&self, reference: LocalIndex) -> Option<LocalIndex> {
         self.iter_log_indices_causal_range(reference..)
             .skip(1)
             .filter(|(c, idx)| {
-                matches!(c, Change::Delete) && self.references.get(idx) == Some(reference)
+                matches!(c, Change::Delete) && self.get_reference(idx) == Some(reference)
             })
             .last()
             .map(|(_, idx)| idx)

@@ -8,16 +8,26 @@ use crate::{AuthorIndex, Chronofold};
 pub trait Author:
     PartialEq + Eq + PartialOrd + Ord + Clone + Copy + fmt::Debug + fmt::Display
 {
+    fn from(raw: usize) -> Self;
+    fn as_usize(&self) -> usize;
 }
 
-/// Blanket implementation of `Author`.
-///
-/// Every type that implements the needed traits automatically implements
-/// `Author` as well.
-impl<T> Author for T where
-    T: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + fmt::Debug + fmt::Display
-{
+macro_rules! impl_for_author {
+    ($type:ident) => {
+        impl Author for $type {
+            fn from(raw: usize) -> Self {
+                raw as Self
+            }
+
+            fn as_usize(&self) -> usize {
+                *self as usize
+            }
+        }
+    };
 }
+
+impl_for_author!(u8);
+impl_for_author!(usize);
 
 /// An ordered pair of the author's index and the author.
 ///
