@@ -82,14 +82,12 @@ impl<A: Author, T> Chronofold<A, T> {
     /// - id equals (log index, author)
     /// - predecessor always equals reference (no preemptive siblings)
     /// - next index has to be set only for the first and the last change
-    pub(crate) fn apply_local_changes<I>(
+    pub(crate) fn apply_local_changes(
         &mut self,
         author: A,
         reference: LocalIndex,
-        changes: I,
+        changes: impl IntoIterator<Item = Change<T>>,
     ) -> Option<LocalIndex>
-    where
-        I: IntoIterator<Item = Change<T>>,
     {
         let mut last_id = None;
         let mut last_next_index = None;

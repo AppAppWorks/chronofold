@@ -76,7 +76,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
 
     /// Extends the chronofold with the contents of `iter`, returns the log
     /// index of the last inserted element, if any.
-    pub fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) -> Option<LocalIndex> {
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = T>) -> Option<LocalIndex> {
         let oob = LocalIndex(self.chronofold.log.len());
         self.splice(oob..oob, iter)
     }
@@ -84,10 +84,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     /// Replaces the specified range in the chronofold with the given
     /// `replace_with` iterator and returns the log index of the last inserted
     /// element, if any.
-    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Option<LocalIndex>
-    where
-        I: IntoIterator<Item = T>,
-        R: RangeBounds<LocalIndex>,
+    pub fn splice(&mut self, range: impl RangeBounds<LocalIndex>, replace_with: impl IntoIterator<Item = T>) -> Option<LocalIndex>
     {
         let last_idx = match range.start_bound() {
             Bound::Unbounded => None,
@@ -116,9 +113,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
         self.apply_changes(reference, Some(change)).unwrap()
     }
 
-    fn apply_changes<I>(&mut self, reference: LocalIndex, changes: I) -> Option<LocalIndex>
-    where
-        I: IntoIterator<Item = Change<T>>,
+    fn apply_changes(&mut self, reference: LocalIndex, changes: impl IntoIterator<Item = Change<T>>) -> Option<LocalIndex>
     {
         self.chronofold
             .apply_local_changes(self.author, reference, changes)

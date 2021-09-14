@@ -10,9 +10,7 @@ impl<A: Author, T> Chronofold<A, T> {
     ///
     /// TODO: The name is a bit unwieldy. I'm reluctant to add it to the public
     /// API before giving it more thought.
-    pub(crate) fn iter_log_indices_causal_range<R>(&self, range: R) -> CausalIter<'_, A, T>
-    where
-        R: RangeBounds<LocalIndex>,
+    pub(crate) fn iter_log_indices_causal_range(&self, range: impl RangeBounds<LocalIndex>) -> CausalIter<'_, A, T>
     {
         let mut current = match range.start_bound() {
             Bound::Unbounded => self.index_after(self.root),
@@ -56,9 +54,7 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     /// Returns an iterator over elements and their log indices in causal order.
-    pub fn iter_range<R>(&self, range: R) -> Iter<A, T>
-    where
-        R: RangeBounds<LocalIndex>,
+    pub fn iter_range(&self, range: impl RangeBounds<LocalIndex>) -> Iter<A, T>
     {
         let mut causal_iter = self.iter_log_indices_causal_range(range);
         let current = causal_iter.next();
@@ -79,9 +75,8 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     /// Returns an iterator over ops in log order.
-    pub fn iter_ops<'a, R, V>(&'a self, range: R) -> Ops<'a, A, T, V>
+    pub fn iter_ops<'a, V>(&'a self, range: impl RangeBounds<LocalIndex> + 'a) -> Ops<'a, A, T, V>
     where
-        R: RangeBounds<LocalIndex> + 'a,
         V: FromLocalValue<'a, A, T>,
     {
         let oob = LocalIndex(self.log.len());
@@ -200,10 +195,9 @@ where
 ///
 /// Note that while this works like `Iterator::skip_while`, it does not create
 /// a new iterator. Instead `iter` is modified.
-fn skip_while<I, P>(iter: &mut I, predicate: P) -> (usize, Option<I::Item>)
+fn skip_while<I>(iter: &mut I, predicate: impl Fn(&I::Item) -> bool) -> (usize, Option<I::Item>)
 where
     I: Iterator,
-    P: Fn(&I::Item) -> bool,
 {
     let mut skipped = 0;
     loop {
