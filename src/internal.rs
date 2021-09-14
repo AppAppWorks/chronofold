@@ -24,18 +24,16 @@ impl<A: Author, T> Chronofold<A, T> {
                 unreachable!()
             }
             (Some(reference), _change) => {
-                if let Some((_, idx)) = self
-                    .iter_log_indices_causal_range(reference..)
+                self.iter_log_indices_causal_range(reference..)
+                    // finding preemptive siblings
                     .filter(|(_, i)| self.get_reference(i) == Some(reference))
-                    .filter(|(c, i)| {
+                    .filter(|(c, i)|
                         matches!(c, Change::Delete) || self.timestamp(*i).unwrap() > id
-                    })
+                    )
                     .last()
-                {
-                    self.iter_subtree(idx).last()
-                } else {
-                    Some(reference)
-                }
+                    .map_or_else(|| Some(reference),
+                                 |(_, idx)| self.iter_subtree(idx).last(),
+                    )
             }
             (None, _change) => {
                 // Non-roots have to reference another entry.
@@ -57,14 +55,13 @@ impl<A: Author, T> Chronofold<A, T> {
         // Set the predecessors next index to our new change's index while
         // keeping it's previous next index for ourselves.
         let new_index = LocalIndex(self.log.len());
-        let next_index;
-        if let Some(idx) = predecessor {
-            next_index = self.get_next_index(&idx);
+        // Inserting another root will result in two disjunct subsequences,
+        // so next_index non-null only if predecessor non-null
+        let next_index = predecessor.and_then(|idx| {
+            let next_index = self.get_next_index(&idx);
             self.set_next_index(idx, Some(new_index));
-        } else {
-            // Inserting another root will result in two disjunct subsequences.
-            next_index = None;
-        }
+            next_index
+        });
 
         // Append to the chronofold's log and secondary logs.
         self.log.push(change);
@@ -97,10 +94,7 @@ impl<A: Author, T> Chronofold<A, T> {
         let mut last_id = None;
         let mut last_next_index = None;
 
-        let mut predecessor = match self.find_last_delete(reference) {
-            Some(idx) => idx,
-            None => reference,
-        };
+        let mut predecessor = self.find_last_delete(reference).unwrap_or(reference);
 
         let mut changes = changes.into_iter();
         if let Some(first_change) = changes.next() {

@@ -44,12 +44,12 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     /// Appends an element to the back of the chronofold and returns the new
     /// element's log index.
     pub fn push_back(&mut self, value: T) -> LocalIndex {
-        if let Some((_, last_index)) = self.chronofold.iter().last() {
-            self.insert_after(last_index, value)
-        } else {
-            // no non-deleted entries left
-            self.insert_after(self.as_ref().root, value)
-        }
+        let index = self.chronofold.iter().last()
+            .map_or_else(
+                || self.as_ref().root, // no non-deleted entries left
+                |(_, last_index)| last_index,
+        );
+        self.insert_after(index, value)
     }
 
     /// Prepends an element to the chronofold and returns the new element's log
@@ -94,12 +94,12 @@ impl<'a, A: Author, T> Session<'a, A, T> {
             Bound::Included(idx) => self.chronofold.index_before(*idx),
             Bound::Excluded(idx) => Some(*idx),
         }
-        .unwrap_or(self.as_ref().root);
-        let to_remove: Vec<LogIndex> = self
+        .unwrap_or_else(|| self.as_ref().root);
+        let to_remove = self
             .chronofold
             .iter_range(range)
             .map(|(_, idx)| idx)
-            .collect();
+            .collect::<Vec<_>>();
         for idx in to_remove.into_iter() {
             self.remove(idx);
         }

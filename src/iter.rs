@@ -143,13 +143,11 @@ impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
                 skip_while(&mut self.causal_iter, |(c, _)| matches!(c, Change::Delete));
             if skipped == 0 {
                 // the current item is not deleted
-                match self.current.take() {
-                    None => {
-                        return None;
-                    }
+                break match self.current.take() {
+                    None => None,
                     Some((Change::Insert(v), idx)) => {
                         self.current = next;
-                        return Some((v, idx));
+                        Some((v, idx))
                     }
                     _ => unreachable!(),
                 }
@@ -210,12 +208,10 @@ where
     let mut skipped = 0;
     loop {
         match iter.next() {
-            Some(item) if !predicate(&item) => {
-                return (skipped, Some(item));
-            }
-            None => {
-                return (skipped, None);
-            }
+            Some(item) if !predicate(&item) =>
+                break (skipped, Some(item)),
+            None =>
+                break (skipped, None),
             _ => skipped += 1,
         }
     }

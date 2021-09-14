@@ -222,22 +222,15 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     pub fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LocalIndex> {
-        for i in (timestamp.idx).0..self.log.len() {
-            if self.timestamp(LocalIndex(i)).unwrap() == *timestamp {
-                return Some(LocalIndex(i));
-            }
-        }
-        None
+        (timestamp.idx.0 .. self.log.len())
+            .map(LocalIndex)
+            .find(|&index| self.timestamp(index).as_ref() == Some(timestamp))
     }
 
     pub fn timestamp(&self, index: LocalIndex) -> Option<Timestamp<A>> {
-        if let (Some(shift), Some(author)) =
-            (self.get_index_shift(&index), self.get_author(&index))
-        {
-            Some(Timestamp::new(&index - &shift, *author))
-        } else {
-            None
-        }
+        let shift = self.get_index_shift(&index)?;
+        let author = self.get_author(&index)?;
+        Some(Timestamp::new(&index - &shift, author))
     }
 
     /// Applies an op to the chronofold.
@@ -260,38 +253,32 @@ impl<A: Author, T> Chronofold<A, T> {
         }
 
         use OpPayload::*;
-        match op.payload {
+        let (reference, change) = match op.payload {
             Root => {
-                self.apply_change(op.id, None, Change::Root);
-                Ok(())
+                (None, Change::Root)
             }
             Insert(Some(t), value) => match self.log_index(&t) {
-                Some(reference) => {
-                    self.apply_change(
-                        op.id,
-                        Some(reference),
-                        Change::Insert(value.into_local_value(self)),
-                    );
-                    Ok(())
-                }
-                None => Err(ChronofoldError::UnknownReference(Op::insert(
+                Some(reference) =>
+                    (Some(reference),
+                        Change::Insert(value.into_local_value(self))),
+                None => return Err(ChronofoldError::UnknownReference(Op::insert(
                     op.id,
                     Some(t),
                     value,
                 ))),
             },
             Insert(None, value) => {
-                self.apply_change(op.id, None, Change::Insert(value.into_local_value(self)));
-                Ok(())
+                (None, Change::Insert(value.into_local_value(self)))
             }
             Delete(t) => match self.log_index(&t) {
-                Some(reference) => {
-                    self.apply_change(op.id, Some(reference), Change::Delete);
-                    Ok(())
-                }
-                None => Err(ChronofoldError::UnknownReference(op)),
+                Some(reference) =>
+                    (Some(reference), Change::Delete),
+                None => return Err(ChronofoldError::UnknownReference(op)),
             },
-        }
+        };
+
+        self.apply_change(op.id, reference, change);
+        Ok(())
     }
 }
 
