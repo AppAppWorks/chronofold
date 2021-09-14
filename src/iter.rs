@@ -8,6 +8,8 @@ use crate::{Author, Change, Chronofold, FromLocalValue, LocalIndex, Op, OpPayloa
 impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over the log indices in causal order.
     ///
+    /// Use this function to find preemptive siblings
+    ///
     /// TODO: The name is a bit unwieldy. I'm reluctant to add it to the public
     /// API before giving it more thought.
     pub(crate) fn iter_log_indices_causal_range(&self, range: impl RangeBounds<LocalIndex>) -> CausalIter<'_, A, T>

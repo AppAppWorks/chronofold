@@ -9,6 +9,7 @@ impl<A: Author, T> Chronofold<A, T> {
         LocalIndex(self.log.len())
     }
 
+    /// find the would-be reference for this change to be inserted
     pub(crate) fn find_predecessor(
         &self,
         id: Timestamp<A>,
@@ -52,8 +53,8 @@ impl<A: Author, T> Chronofold<A, T> {
         // Find the predecessor to `op`.
         let predecessor = self.find_predecessor(id, reference, &change);
 
-        // Set the predecessors next index to our new change's index while
-        // keeping it's previous next index for ourselves.
+        // Set the predecessor's next index to our new change's index while
+        // keeping its previous next index for ourselves.
         let new_index = LocalIndex(self.log.len());
         // Inserting another root will result in two disjunct subsequences,
         // so next_index non-null only if predecessor non-null

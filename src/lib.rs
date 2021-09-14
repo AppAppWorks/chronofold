@@ -221,12 +221,14 @@ impl<A: Author, T> Chronofold<A, T> {
         Session::new(author, self)
     }
 
+    /// ndxᵅ, (ß, ɣ) -> j
     pub fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LocalIndex> {
         (timestamp.idx.0 .. self.log.len())
             .map(LocalIndex)
             .find(|&index| self.timestamp(index).as_ref() == Some(timestamp))
     }
 
+    /// ndxᵅ-1, j -> (ß, ɣ)
     pub fn timestamp(&self, index: LocalIndex) -> Option<Timestamp<A>> {
         let shift = self.get_index_shift(&index)?;
         let author = self.get_author(&index)?;
@@ -245,14 +247,16 @@ impl<A: Author, T> Chronofold<A, T> {
             return Err(ChronofoldError::ExistingTimestamp(op));
         }
 
-        // We rely on indices in timestamps being greater or equal than their
+        // We rely on indices in timestamps being smaller or equal than their
         // indices in every local log. This means we cannot apply an op not
         // matching this constraint, even if we know the reference.
+        // i.e. andx(βᵏ) ⪬ k; andx(t) ⪬ ndxᵦ(t) for all β ∈ proc(R)
         if op.id.idx.0 > self.log.len() {
             return Err(ChronofoldError::FutureTimestamp(op));
         }
 
         use OpPayload::*;
+        // transform author index to local index before adding entry to the log
         let (reference, change) = match op.payload {
             Root => {
                 (None, Change::Root)
