@@ -1,12 +1,11 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
 
 use crate::{Author, Chronofold, FromLocalValue, LocalIndex, Op, Timestamp, AuthorIndex, LogIndex};
 
 /// A vector clock representing the chronofold's version.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Version<A> {
-    log_indices: BTreeMap<A, AuthorIndex>,
+    log_indices: Vec<Timestamp<A>>,
 }
 
 impl<A: Author> Version<A> {
@@ -17,37 +16,40 @@ impl<A: Author> Version<A> {
 
     /// Increments the version using a timestamp.
     pub fn inc(&mut self, timestamp: &Timestamp<A>) {
-        self.log_indices
-            .entry(timestamp.author)
-            .and_modify(|t| *t = AuthorIndex(usize::max(t.0, (timestamp.idx).0)))
-            .or_insert(timestamp.idx);
+        match self.log_indices
+            .binary_search_by(|t| t.author.cmp(&timestamp.author)) {
+            Ok(idx) => self.log_indices[idx].idx.take_max(&timestamp.idx),
+            Err(idx) => self.log_indices.insert(idx, *timestamp),
+        };
     }
 
     /// Returns an iterator over the timestamps in this version.
     pub fn iter(&self) -> impl Iterator<Item = Timestamp<A>> + '_ {
-        self.log_indices.iter().map(|(a, i)| Timestamp::new(*i, *a))
+        self.log_indices.iter().map(Timestamp::clone)
     }
 
     /// Returns the version's log index for `author`.
     pub fn get(&self, author: &A) -> Option<AuthorIndex> {
-        self.log_indices.get(author).cloned()
+        let idx = self.log_indices
+            .binary_search_by(|t| t.author.cmp(author)).ok()?;
+        Some(self.log_indices[idx].idx)
     }
 }
 
 impl<A: Author> Default for Version<A> {
     fn default() -> Self {
         Self {
-            log_indices: BTreeMap::new(),
+            log_indices: Vec::new(),
         }
     }
 }
 
 impl<A: Author> PartialOrd for Version<A> {
-    fn partial_cmp(&self, other: &Version<A>) -> Option<Ordering> {
-        let gt = |lhs: &Version<A>, rhs: &Version<A>| {
-            rhs.log_indices.iter().all(|(a, rhs_idx)| {
-                lhs.get(a)
-                    .map(|lhs_idx| lhs_idx >= *rhs_idx)
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let gt = |lhs: &Self, rhs: &Self| {
+            rhs.log_indices.iter().all(|ref t| {
+                lhs.get(&t.author)
+                    .map(|lhs_idx| lhs_idx >= t.idx)
                     .unwrap_or(false)
             })
         };
@@ -80,10 +82,11 @@ impl<A: Author, T> Chronofold<A, T> {
     {
         // TODO: Don't iterate over all ops in cases where that is not
         // necessary.
-        self.iter_ops(..)
-            .filter(move |op| match version.log_indices.get(&op.id.author) {
-                None => true,
-                Some(idx) => op.id.idx > *idx,
+        self.iter_ops(..)// O(nlog(n))
+            .filter(move |op| match version.log_indices
+                .binary_search_by(|t| t.author.cmp(&op.id.author)) {
+                Err(_) => true,
+                Ok(idx) => op.id.idx > version.log_indices[idx].idx,
             })
     }
 }
@@ -118,7 +121,7 @@ mod serde {
             D: Deserializer<'de>,
         {
             Ok(Self {
-                log_indices: BTreeMap::deserialize(deserializer)?,
+                log_indices: Vec::deserialize(deserializer)?,
             })
         }
     }
